@@ -21,6 +21,8 @@ const CONFIG = {
   ORIGIN_NAME: 'Shop 45',
   DESTINATION_LOCATION_ID: 'gid://shopify/Location/111696085355',
   DESTINATION_NAME: 'Shop 47',
+  // Direct app URL for API calls
+  APP_URL: 'https://pos-inventory-transfer.fly.dev',
 };
 // ============================================================================
 
@@ -40,17 +42,24 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
     setLoading(true);
     setError(null);
     try {
-      const shopDomain = api.session.shop;
-      const url = `https://${shopDomain}/apps/pos-inventory-transfer/api/search?q=${encodeURIComponent(searchQuery)}`;
+      // Get session token for authenticated requests
+      const sessionToken = await api.session.getSessionToken();
+      const shop = api.session.shop;
+
+      const url = `${CONFIG.APP_URL}/api/search?q=${encodeURIComponent(searchQuery)}&shop=${encodeURIComponent(shop)}`;
       console.log('Fetching:', url);
+
       const response = await fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
       });
       const responseText = await response.text();
-      console.log('Response status:', response.status, 'Body:', responseText);
+      console.log('Response status:', response.status, 'Body:', responseText.substring(0, 500));
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${responseText}`);
+        throw new Error(`HTTP ${response.status}: ${responseText.substring(0, 200)}`);
       }
 
       const data = JSON.parse(responseText);
@@ -60,7 +69,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
       setProducts(data.products || []);
     } catch (err: any) {
       console.error('Load error:', err);
-      setError(`Error: ${err.message || String(err)}`);
+      setError(`${err.message || String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -68,7 +77,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
 
   const handleSearch = useCallback(() => {
     loadProducts(query);
-  }, [query, api.session.shop]);
+  }, [query]);
 
   return (
     <Navigator>
@@ -142,23 +151,30 @@ function ProductScreen({
         return;
       }
       try {
-        const shopDomain = api.session.shop;
-        const url = `https://${shopDomain}/apps/pos-inventory-transfer/api/product/${encodeURIComponent(variant.inventoryItemId)}`;
+        const sessionToken = await api.session.getSessionToken();
+        const shop = api.session.shop;
+        const url = `${CONFIG.APP_URL}/api/product/${encodeURIComponent(variant.inventoryItemId)}?shop=${encodeURIComponent(shop)}`;
         const response = await fetch(url, {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
         });
-        if (!response.ok) throw new Error('Failed to fetch');
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+        }
         const data = await response.json();
         setInventory(data.levels);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Inventory error:', err);
-        setError('Failed to load inventory');
+        setError(`Failed to load inventory: ${err.message}`);
       } finally {
         setLoading(false);
       }
     }
     fetchInventory();
-  }, [variant.inventoryItemId, api.session.shop]);
+  }, [variant.inventoryItemId]);
 
   const originStock = inventory?.[CONFIG.ORIGIN_LOCATION_ID]?.available ?? 0;
   const destinationStock = inventory?.[CONFIG.DESTINATION_LOCATION_ID]?.available ?? 0;
@@ -171,11 +187,15 @@ function ProductScreen({
     setTransferring(true);
     setError(null);
     try {
-      const shopDomain = api.session.shop;
-      const url = `https://${shopDomain}/apps/pos-inventory-transfer/api/transfer`;
+      const sessionToken = await api.session.getSessionToken();
+      const shop = api.session.shop;
+      const url = `${CONFIG.APP_URL}/api/transfer?shop=${encodeURIComponent(shop)}`;
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
         body: JSON.stringify({
           inventoryItemId: variant.inventoryItemId,
           originLocationId: CONFIG.ORIGIN_LOCATION_ID,

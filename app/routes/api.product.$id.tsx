@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticate, unauthenticated } from "../shopify.server";
 import { GET_INVENTORY_LEVELS_QUERY } from "../lib/graphql/get-inventory";
 
 interface InventoryLevel {
@@ -14,7 +14,29 @@ interface InventoryResponse {
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const { admin } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const shopParam = url.searchParams.get("shop");
+  const authHeader = request.headers.get("Authorization");
+
+  let admin;
+
+  if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
+    // POS extension request with session token
+    try {
+      const result = await unauthenticated.admin(shopParam);
+      admin = result;
+    } catch (e) {
+      console.error("Auth failed:", e);
+      return Response.json(
+        { error: "Authentication failed. Please reinstall the app." },
+        { status: 401 }
+      );
+    }
+  } else {
+    // Standard admin request
+    const result = await authenticate.admin(request);
+    admin = result.admin;
+  }
 
   // The id parameter is the inventory item ID (URL encoded)
   const inventoryItemId = decodeURIComponent(params.id || "");

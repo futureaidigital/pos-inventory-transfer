@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticate, unauthenticated } from "../shopify.server";
 import {
   SEARCH_PRODUCTS_QUERY,
   SEARCH_BY_BARCODE_QUERY,
@@ -22,10 +22,38 @@ interface Product {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { admin } = await authenticate.admin(request);
-
   const url = new URL(request.url);
   const query = url.searchParams.get("q") || "";
+  const shopParam = url.searchParams.get("shop");
+
+  // Check for Authorization header (from POS extension)
+  const authHeader = request.headers.get("Authorization");
+
+  let admin;
+
+  if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
+    // POS extension request with session token
+    try {
+      const result = await authenticate.public.appProxy(request);
+      admin = result.admin;
+    } catch (e) {
+      // Try unauthenticated admin for the shop
+      try {
+        const result = await unauthenticated.admin(shopParam);
+        admin = result;
+      } catch (e2) {
+        console.error("Auth failed:", e2);
+        return Response.json(
+          { products: [], error: "Authentication failed. Please reinstall the app." },
+          { status: 401 }
+        );
+      }
+    }
+  } else {
+    // Standard admin request
+    const result = await authenticate.admin(request);
+    admin = result.admin;
+  }
 
   // Check if query looks like a barcode (8-14 digits)
   const isBarcode = query && /^\d{8,14}$/.test(query);

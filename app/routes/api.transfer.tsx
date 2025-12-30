@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticate, unauthenticated } from "../shopify.server";
 import {
   ADJUST_INVENTORY_MUTATION,
   buildTransferInput,
@@ -18,7 +18,29 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  const { admin } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const shopParam = url.searchParams.get("shop");
+  const authHeader = request.headers.get("Authorization");
+
+  let admin;
+
+  if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
+    // POS extension request with session token
+    try {
+      const result = await unauthenticated.admin(shopParam);
+      admin = result;
+    } catch (e) {
+      console.error("Auth failed:", e);
+      return Response.json(
+        { success: false, error: "Authentication failed. Please reinstall the app." },
+        { status: 401 }
+      );
+    }
+  } else {
+    // Standard admin request
+    const result = await authenticate.admin(request);
+    admin = result.admin;
+  }
 
   let body: TransferRequest;
   try {
