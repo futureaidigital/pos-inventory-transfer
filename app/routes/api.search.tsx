@@ -27,12 +27,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q") || "";
 
-  if (!query || query.length < 2) {
-    return { products: [] };
-  }
-
   // Check if query looks like a barcode (8-14 digits)
-  const isBarcode = /^\d{8,14}$/.test(query);
+  const isBarcode = query && /^\d{8,14}$/.test(query);
 
   try {
     let response;
@@ -41,11 +37,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       response = await admin.graphql(SEARCH_BY_BARCODE_QUERY, {
         variables: { barcode: query },
       });
-    } else {
+    } else if (query && query.length >= 2) {
       // Search by title or SKU
       const searchQuery = `title:*${query}* OR sku:*${query}*`;
       response = await admin.graphql(SEARCH_PRODUCTS_QUERY, {
         variables: { query: searchQuery },
+      });
+    } else {
+      // No query - return first 50 products (most recently updated)
+      response = await admin.graphql(SEARCH_PRODUCTS_QUERY, {
+        variables: { query: "status:active" },
       });
     }
 
@@ -57,9 +58,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       : normalizeProductResponse(data);
 
     return { products };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Search error:", error);
-    return Response.json({ products: [], error: "Search failed" }, { status: 500 });
+    const errorMessage = error?.message || error?.toString() || "Unknown error";
+    return Response.json(
+      { products: [], error: `Search failed: ${errorMessage}` },
+      { status: 500 }
+    );
   }
 }
 

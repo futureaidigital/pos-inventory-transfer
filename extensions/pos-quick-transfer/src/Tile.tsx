@@ -5,8 +5,8 @@ const TileComponent = () => {
 
   return (
     <Tile
-      title="Quick Transfer"
-      subtitle="Move stock to Shop 47"
+      title="Inventory Transfer"
+      subtitle="Shop 45 → Shop 47"
       onPress={() => {
         api.action.presentModal();
       }}

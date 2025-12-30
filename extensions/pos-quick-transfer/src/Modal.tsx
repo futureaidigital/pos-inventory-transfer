@@ -27,32 +27,47 @@ const CONFIG = {
 function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product) => void }) {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const api = useApi<'pos.home.modal.render'>();
 
-  const handleSearch = useCallback(async () => {
-    if (!query || query.length < 2) {
-      setProducts([]);
-      return;
-    }
+  // Load products on mount (show all by default)
+  useEffect(() => {
+    loadProducts('');
+  }, []);
+
+  const loadProducts = async (searchQuery: string) => {
     setLoading(true);
     setError(null);
     try {
       const shopDomain = api.session.shop;
-      const url = `https://${shopDomain}/apps/pos-inventory-transfer/api/search?q=${encodeURIComponent(query)}`;
+      const url = `https://${shopDomain}/apps/pos-inventory-transfer/api/search?q=${encodeURIComponent(searchQuery)}`;
+      console.log('Fetching:', url);
       const response = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
       });
-      if (!response.ok) throw new Error('Search failed');
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log('Response status:', response.status, 'Body:', responseText);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
+      }
+
+      const data = JSON.parse(responseText);
+      if (data.error) {
+        throw new Error(data.error);
+      }
       setProducts(data.products || []);
-    } catch (err) {
-      console.error('Search error:', err);
-      setError('Failed to search products');
+    } catch (err: any) {
+      console.error('Load error:', err);
+      setError(`Error: ${err.message || String(err)}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = useCallback(() => {
+    loadProducts(query);
   }, [query, api.session.shop]);
 
   return (
@@ -61,7 +76,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
         <ScrollView>
           <TextField
             label="Search by name, SKU, or barcode"
-            placeholder="Type to search..."
+            placeholder="Filter products..."
             value={query}
             onChange={setQuery}
             action={{
@@ -70,7 +85,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
             }}
           />
 
-          {loading && <Text>Searching...</Text>}
+          {loading && <Text>Loading products...</Text>}
 
           {error && (
             <Banner title="Error" variant="error" visible>
@@ -78,9 +93,9 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
             </Banner>
           )}
 
-          {products.length > 0 && (
+          {!loading && products.length > 0 && (
             <>
-              <Text>Results ({products.length}):</Text>
+              <Text>Products ({products.length}):</Text>
               {products.map((product) => (
                 <Button
                   key={product.id}
@@ -92,7 +107,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
             </>
           )}
 
-          {!loading && query.length >= 2 && products.length === 0 && (
+          {!loading && products.length === 0 && !error && (
             <Text>No products found</Text>
           )}
         </ScrollView>
