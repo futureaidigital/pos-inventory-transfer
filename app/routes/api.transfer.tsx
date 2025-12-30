@@ -25,14 +25,14 @@ export async function action({ request }: ActionFunctionArgs) {
   let admin;
 
   if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
-    // POS extension request with session token
+    // POS extension request - use unauthenticated admin with stored session
     try {
-      const result = await unauthenticated.admin(shopParam);
-      admin = result;
-    } catch (e) {
+      const unauthAdmin = await unauthenticated.admin(shopParam);
+      admin = unauthAdmin.admin;
+    } catch (e: any) {
       console.error("Auth failed:", e);
       return Response.json(
-        { success: false, error: "Authentication failed. Please reinstall the app." },
+        { success: false, error: `Auth failed: ${e.message}` },
         { status: 401 }
       );
     }

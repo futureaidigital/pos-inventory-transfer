@@ -32,22 +32,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let admin;
 
   if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
-    // POS extension request with session token
+    // POS extension request - use unauthenticated admin with stored session
     try {
-      const result = await authenticate.public.appProxy(request);
-      admin = result.admin;
-    } catch (e) {
-      // Try unauthenticated admin for the shop
-      try {
-        const result = await unauthenticated.admin(shopParam);
-        admin = result;
-      } catch (e2) {
-        console.error("Auth failed:", e2);
-        return Response.json(
-          { products: [], error: "Authentication failed. Please reinstall the app." },
-          { status: 401 }
-        );
-      }
+      const unauthAdmin = await unauthenticated.admin(shopParam);
+      admin = unauthAdmin.admin;
+    } catch (e: any) {
+      console.error("Auth failed:", e);
+      return Response.json(
+        { products: [], error: `Auth failed: ${e.message}` },
+        { status: 401 }
+      );
     }
   } else {
     // Standard admin request
