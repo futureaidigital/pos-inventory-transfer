@@ -23,6 +23,8 @@ const CONFIG = {
   DESTINATION_NAME: 'Shop 47',
   // Direct app URL for API calls
   APP_URL: 'https://pos-inventory-transfer.fly.dev',
+  // Hardcoded shop domain for Calibre 88
+  SHOP_DOMAIN: 'da0kzz-iu.myshopify.com',
 };
 // ============================================================================
 
@@ -44,9 +46,8 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
     try {
       // Get session token for authenticated requests
       const sessionToken = await api.session.getSessionToken();
-      const shop = api.session.shop;
 
-      const url = `${CONFIG.APP_URL}/api/search?q=${encodeURIComponent(searchQuery)}&shop=${encodeURIComponent(shop)}`;
+      const url = `${CONFIG.APP_URL}/api/search?q=${encodeURIComponent(searchQuery)}&shop=${encodeURIComponent(CONFIG.SHOP_DOMAIN)}`;
       console.log('Fetching:', url);
 
       const response = await fetch(url, {
@@ -152,8 +153,7 @@ function ProductScreen({
       }
       try {
         const sessionToken = await api.session.getSessionToken();
-        const shop = api.session.shop;
-        const url = `${CONFIG.APP_URL}/api/product/${encodeURIComponent(variant.inventoryItemId)}?shop=${encodeURIComponent(shop)}`;
+        const url = `${CONFIG.APP_URL}/api/product/${encodeURIComponent(variant.inventoryItemId)}?shop=${encodeURIComponent(CONFIG.SHOP_DOMAIN)}`;
         const response = await fetch(url, {
           headers: {
             'Content-Type': 'application/json',
@@ -188,8 +188,7 @@ function ProductScreen({
     setError(null);
     try {
       const sessionToken = await api.session.getSessionToken();
-      const shop = api.session.shop;
-      const url = `${CONFIG.APP_URL}/api/transfer?shop=${encodeURIComponent(shop)}`;
+      const url = `${CONFIG.APP_URL}/api/transfer?shop=${encodeURIComponent(CONFIG.SHOP_DOMAIN)}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
