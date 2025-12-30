@@ -1,0 +1,25 @@
+databases:
+  - name: pos-inventory-transfer-db
+    plan: free
+    databaseName: pos_inventory_transfer
+    user: pos_user
+
+services:
+  - type: web
+    plan: free
+    name: pos-inventory-transfer
+    runtime: docker
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pos-inventory-transfer-db
+          property: connectionString
+      - key: SHOPIFY_API_KEY
+        sync: false
+      - key: SHOPIFY_API_SECRET
+        sync: false
+      - key: SCOPES
+        value: read_products,read_inventory,write_inventory,read_locations
+      - key: NODE_ENV
+        value: production

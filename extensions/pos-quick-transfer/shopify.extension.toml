@@ -1,0 +1,21 @@
+api_version = "2025-07"
+
+[[extensions]]
+type = "ui_extension"
+name = "Quick Transfer from Shop 45"
+uid = "3766d54f-958a-4798-a80f-a1d2e4b83393929b983b"
+handle = "pos-quick-transfer"
+description = "Transfer inventory from Shop 45 to Shop 47 with one tap"
+
+[extensions.capabilities]
+network_access = true
+
+# module: file that contains your extension's source code
+# target: location where your extension appears in POS
+[[extensions.targeting]]
+module = "./src/Tile.tsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.tsx"
+target = "pos.home.modal.render"
