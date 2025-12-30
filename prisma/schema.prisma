@@ -6,10 +6,12 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
-// Using Turso (libsql) for database
+// Using Turso (libsql) for persistent database
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  // For local dev, use file:./dev.db
+  // For production, TURSO_DATABASE_URL is used via libsql adapter
+  url      = env("DATABASE_URL")
 }
 
 model Session {
