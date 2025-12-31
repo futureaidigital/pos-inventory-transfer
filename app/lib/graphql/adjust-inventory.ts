@@ -1,5 +1,20 @@
 // GraphQL mutation for adjusting inventory (transfer between locations)
 
+// Mutation to activate inventory at a location (stock item at location)
+export const ACTIVATE_INVENTORY_MUTATION = `
+  mutation InventorySetOnHandQuantities($input: InventorySetOnHandQuantitiesInput!) {
+    inventorySetOnHandQuantities(input: $input) {
+      inventoryAdjustmentGroup {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
 export const ADJUST_INVENTORY_MUTATION = `
   mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!) {
     inventoryAdjustQuantities(input: $input) {

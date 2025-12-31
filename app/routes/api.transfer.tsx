@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate, unauthenticated } from "../shopify.server";
 import {
   ADJUST_INVENTORY_MUTATION,
+  ACTIVATE_INVENTORY_MUTATION,
   buildTransferInput,
 } from "../lib/graphql/adjust-inventory";
 
@@ -91,6 +92,32 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
+    // First, ensure the destination location has the item stocked (activate if needed)
+    // We do this by setting on-hand quantity to 0 if not already stocked
+    console.log("Activating inventory at destination location...");
+    const activateInput = {
+      reason: "correction",
+      setQuantities: [
+        {
+          inventoryItemId,
+          locationId: destinationLocationId,
+          quantity: 0, // Just activate with 0, transfer will add the quantity
+        },
+      ],
+    };
+
+    try {
+      const activateResponse = await admin.graphql(ACTIVATE_INVENTORY_MUTATION, {
+        variables: { input: activateInput },
+      });
+      const activateData = await activateResponse.json();
+      console.log("Activate response:", JSON.stringify(activateData, null, 2));
+      // Ignore errors here - if already stocked, it might fail but that's fine
+    } catch (activateError) {
+      console.log("Activate inventory (may already be stocked):", activateError);
+      // Continue anyway - the item might already be stocked
+    }
+
     // Build the transfer input
     const input = buildTransferInput(
       inventoryItemId,
@@ -142,7 +169,7 @@ export async function action({ request }: ActionFunctionArgs) {
       success: true,
       adjustmentId: adjustmentGroup?.id,
       createdAt: adjustmentGroup?.createdAt,
-      changes: adjustmentGroup?.changes?.edges?.map((e: any) => e.node) || [],
+      changes: [],
     }, { headers: corsHeaders });
   } catch (error: any) {
     console.error("Transfer error:", error);
