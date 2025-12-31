@@ -305,9 +305,42 @@ function SuccessScreen({
   );
 }
 
+function VariantSelectScreen({
+  product,
+  onSelectVariant,
+  onBack,
+}: {
+  product: Product;
+  onSelectVariant: (variant: ProductVariant) => void;
+  onBack: () => void;
+}) {
+  return (
+    <Navigator>
+      <Screen name="Variants" title="Select Variant">
+        <ScrollView>
+          <Text>{product.title}</Text>
+          <Text>Select variant to transfer:</Text>
+
+          {product.variants.map((variant) => (
+            <Button
+              key={variant.id}
+              title={`${variant.title}${variant.sku ? ` (${variant.sku})` : ''}`}
+              type="basic"
+              onPress={() => onSelectVariant(variant)}
+            />
+          ))}
+
+          <Button title="Back" type="basic" onPress={onBack} />
+        </ScrollView>
+      </Screen>
+    </Navigator>
+  );
+}
+
 function Modal() {
-  const [currentScreen, setCurrentScreen] = useState<'search' | 'product' | 'success'>('search');
+  const [currentScreen, setCurrentScreen] = useState<'search' | 'variants' | 'product' | 'success'>('search');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [transferResult, setTransferResult] = useState<{
     quantity: number;
     newOriginStock: number;
@@ -316,6 +349,18 @@ function Modal() {
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
+    // If product has multiple variants, show variant selection screen
+    if (product.variants.length > 1) {
+      setCurrentScreen('variants');
+    } else {
+      // Single variant - go directly to product screen
+      setSelectedVariant(product.variants[0]);
+      setCurrentScreen('product');
+    }
+  };
+
+  const handleSelectVariant = (variant: ProductVariant) => {
+    setSelectedVariant(variant);
     setCurrentScreen('product');
   };
 
@@ -324,14 +369,25 @@ function Modal() {
     setCurrentScreen('success');
   };
 
-  const handleBack = () => {
+  const handleBackToSearch = () => {
     setCurrentScreen('search');
     setSelectedProduct(null);
+    setSelectedVariant(null);
+  };
+
+  const handleBackToVariants = () => {
+    if (selectedProduct && selectedProduct.variants.length > 1) {
+      setCurrentScreen('variants');
+      setSelectedVariant(null);
+    } else {
+      handleBackToSearch();
+    }
   };
 
   const handleDone = () => {
     setCurrentScreen('search');
     setSelectedProduct(null);
+    setSelectedVariant(null);
     setTransferResult(null);
   };
 
@@ -339,22 +395,32 @@ function Modal() {
     return <SearchScreen onSelectProduct={handleSelectProduct} />;
   }
 
-  if (currentScreen === 'product' && selectedProduct) {
+  if (currentScreen === 'variants' && selectedProduct) {
     return (
-      <ProductScreen
+      <VariantSelectScreen
         product={selectedProduct}
-        variant={selectedProduct.variants[0]}
-        onTransferSuccess={handleTransferSuccess}
-        onBack={handleBack}
+        onSelectVariant={handleSelectVariant}
+        onBack={handleBackToSearch}
       />
     );
   }
 
-  if (currentScreen === 'success' && selectedProduct && transferResult) {
+  if (currentScreen === 'product' && selectedProduct && selectedVariant) {
+    return (
+      <ProductScreen
+        product={selectedProduct}
+        variant={selectedVariant}
+        onTransferSuccess={handleTransferSuccess}
+        onBack={handleBackToVariants}
+      />
+    );
+  }
+
+  if (currentScreen === 'success' && selectedProduct && selectedVariant && transferResult) {
     return (
       <SuccessScreen
         product={selectedProduct}
-        variant={selectedProduct.variants[0]}
+        variant={selectedVariant}
         quantity={transferResult.quantity}
         newOriginStock={transferResult.newOriginStock}
         newDestinationStock={transferResult.newDestinationStock}
