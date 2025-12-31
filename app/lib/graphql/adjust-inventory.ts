@@ -7,17 +7,6 @@ export const ADJUST_INVENTORY_MUTATION = `
         id
         createdAt
         reason
-        changes(first: 10) {
-          edges {
-            node {
-              name
-              delta
-              location {
-                name
-              }
-            }
-          }
-        }
       }
       userErrors {
         field
