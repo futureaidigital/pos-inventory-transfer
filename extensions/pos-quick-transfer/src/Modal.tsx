@@ -35,12 +35,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
   const [error, setError] = useState<string | null>(null);
   const api = useApi<'pos.home.modal.render'>();
 
-  // Load products on mount (show all by default)
-  useEffect(() => {
-    loadProducts('');
-  }, []);
-
-  const loadProducts = async (searchQuery: string) => {
+  const loadProducts = useCallback(async (searchQuery: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -74,11 +69,16 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  // Load products on mount (show all by default)
+  useEffect(() => {
+    loadProducts('');
+  }, [loadProducts]);
 
   const handleSearch = useCallback(() => {
     loadProducts(query);
-  }, [query]);
+  }, [query, loadProducts]);
 
   return (
     <Navigator>
@@ -95,12 +95,18 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
             }}
           />
 
-          {loading && <Text>Loading products...</Text>}
+          {loading && !error && <Text>Loading products...</Text>}
 
           {error && (
-            <Banner title="Error" variant="error" visible>
-              {error}
-            </Banner>
+            <>
+              <Text variant="headingSmall">Error:</Text>
+              <Text>{error}</Text>
+              <Button
+                title="Retry"
+                type="primary"
+                onPress={handleSearch}
+              />
+            </>
           )}
 
           {!loading && products.length > 0 && (

@@ -5,6 +5,13 @@ import {
   buildTransferInput,
 } from "../lib/graphql/adjust-inventory";
 
+// CORS headers for POS extension
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 interface TransferRequest {
   inventoryItemId: string;
   originLocationId: string;
@@ -13,9 +20,14 @@ interface TransferRequest {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   // Only allow POST requests
   if (request.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
+    return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
   }
 
   const url = new URL(request.url);
@@ -33,7 +45,7 @@ export async function action({ request }: ActionFunctionArgs) {
       console.error("Auth failed:", e);
       return Response.json(
         { success: false, error: `Auth failed: ${e.message}` },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
   } else {
@@ -46,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+    return Response.json({ error: "Invalid JSON body" }, { status: 400, headers: corsHeaders });
   }
 
   const {
@@ -63,7 +75,7 @@ export async function action({ request }: ActionFunctionArgs) {
         success: false,
         error: "Missing required fields: inventoryItemId, originLocationId, destinationLocationId",
       },
-      { status: 400 }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -74,7 +86,7 @@ export async function action({ request }: ActionFunctionArgs) {
         success: false,
         error: "Quantity must be a positive number",
       },
-      { status: 400 }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -101,7 +113,7 @@ export async function action({ request }: ActionFunctionArgs) {
           success: false,
           errors: userErrors,
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -109,12 +121,12 @@ export async function action({ request }: ActionFunctionArgs) {
     const adjustmentGroup =
       data?.data?.inventoryAdjustQuantities?.inventoryAdjustmentGroup;
 
-    return {
+    return Response.json({
       success: true,
       adjustmentId: adjustmentGroup?.id,
       createdAt: adjustmentGroup?.createdAt,
       changes: adjustmentGroup?.changes?.edges?.map((e: any) => e.node) || [],
-    };
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error("Transfer error:", error);
     return Response.json(
@@ -122,12 +134,15 @@ export async function action({ request }: ActionFunctionArgs) {
         success: false,
         error: "Failed to transfer inventory",
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
-// Disallow GET requests
+// Handle OPTIONS and disallow GET requests
 export async function loader({ request }: LoaderFunctionArgs) {
-  return Response.json({ error: "Use POST to transfer inventory" }, { status: 405 });
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  return Response.json({ error: "Use POST to transfer inventory" }, { status: 405, headers: corsHeaders });
 }

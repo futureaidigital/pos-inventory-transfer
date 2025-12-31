@@ -5,6 +5,13 @@ import {
   SEARCH_BY_BARCODE_QUERY,
 } from "../lib/graphql/search-products";
 
+// CORS headers for POS extension
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 interface ProductVariant {
   id: string;
   title: string;
@@ -21,7 +28,20 @@ interface Product {
   variants: ProductVariant[];
 }
 
+// Handle CORS preflight
+export async function action({ request }: LoaderFunctionArgs) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
+  // Handle CORS preflight for GET requests
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const url = new URL(request.url);
   const query = url.searchParams.get("q") || "";
   const shopParam = url.searchParams.get("shop");
@@ -40,7 +60,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       console.error("Auth failed:", e);
       return Response.json(
         { products: [], error: `Auth failed: ${e.message}` },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
   } else {
@@ -79,13 +99,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       ? normalizeVariantResponse(data)
       : normalizeProductResponse(data);
 
-    return { products };
+    return Response.json({ products }, { headers: corsHeaders });
   } catch (error: any) {
     console.error("Search error:", error);
     const errorMessage = error?.message || error?.toString() || "Unknown error";
     return Response.json(
       { products: [], error: `Search failed: ${errorMessage}` },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

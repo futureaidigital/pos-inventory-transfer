@@ -2,6 +2,13 @@ import type { LoaderFunctionArgs } from "react-router";
 import { authenticate, unauthenticated } from "../shopify.server";
 import { GET_INVENTORY_LEVELS_QUERY } from "../lib/graphql/get-inventory";
 
+// CORS headers for POS extension
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 interface InventoryLevel {
   name: string;
   available: number;
@@ -13,7 +20,20 @@ interface InventoryResponse {
   levels: Record<string, InventoryLevel>;
 }
 
+// Handle CORS preflight
+export async function action({ request }: LoaderFunctionArgs) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+}
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const url = new URL(request.url);
   const shopParam = url.searchParams.get("shop");
   const authHeader = request.headers.get("Authorization");
@@ -29,7 +49,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       console.error("Auth failed:", e);
       return Response.json(
         { error: `Auth failed: ${e.message}` },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
   } else {
@@ -42,7 +62,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const inventoryItemId = decodeURIComponent(params.id || "");
 
   if (!inventoryItemId) {
-    return Response.json({ error: "Inventory item ID is required" }, { status: 400 });
+    return Response.json({ error: "Inventory item ID is required" }, { status: 400, headers: corsHeaders });
   }
 
   try {
@@ -53,7 +73,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const data = await response.json();
 
     if (!data?.data?.inventoryItem) {
-      return Response.json({ error: "Inventory item not found" }, { status: 404 });
+      return Response.json({ error: "Inventory item not found" }, { status: 404, headers: corsHeaders });
     }
 
     const inventoryLevels = data.data.inventoryItem.inventoryLevels.edges;
@@ -83,12 +103,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       levels,
     };
 
-    return result;
+    return Response.json(result, { headers: corsHeaders });
   } catch (error) {
     console.error("Get inventory error:", error);
     return Response.json(
       { error: "Failed to fetch inventory levels" },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
