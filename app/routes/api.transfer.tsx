@@ -93,26 +93,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // First, ensure the destination location has the item stocked (activate if needed)
-    // We do this by setting on-hand quantity to 0 if not already stocked
     console.log("Activating inventory at destination location...");
-    const activateInput = {
-      reason: "correction",
-      setQuantities: [
-        {
-          inventoryItemId,
-          locationId: destinationLocationId,
-          quantity: 0, // Just activate with 0, transfer will add the quantity
-        },
-      ],
-    };
 
     try {
       const activateResponse = await admin.graphql(ACTIVATE_INVENTORY_MUTATION, {
-        variables: { input: activateInput },
+        variables: {
+          inventoryItemId,
+          locationId: destinationLocationId,
+        },
       });
       const activateData = await activateResponse.json();
       console.log("Activate response:", JSON.stringify(activateData, null, 2));
-      // Ignore errors here - if already stocked, it might fail but that's fine
+      // If there's a user error about already being active, that's fine
+      const activateErrors = activateData?.data?.inventoryActivate?.userErrors || [];
+      if (activateErrors.length > 0) {
+        console.log("Activate user errors (may be already active):", activateErrors);
+      }
     } catch (activateError) {
       console.log("Activate inventory (may already be stocked):", activateError);
       // Continue anyway - the item might already be stocked
