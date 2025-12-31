@@ -7,11 +7,11 @@ generator client {
 }
 
 // Using Turso (libsql) for persistent database
+// The url is only used by Prisma CLI for schema validation
+// At runtime, db.server.ts uses the libsql adapter with TURSO_DATABASE_URL
 datasource db {
   provider = "sqlite"
-  // For local dev, use file:./dev.db
-  // For production, TURSO_DATABASE_URL is used via libsql adapter
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model Session {
