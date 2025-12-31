@@ -99,18 +99,35 @@ export async function action({ request }: ActionFunctionArgs) {
       quantity
     );
 
+    console.log("Transfer input:", JSON.stringify(input, null, 2));
+
     const response = await admin.graphql(ADJUST_INVENTORY_MUTATION, {
       variables: { input },
     });
 
     const data = await response.json();
+    console.log("GraphQL response:", JSON.stringify(data, null, 2));
+
+    // Check for GraphQL errors
+    if (data?.errors && data.errors.length > 0) {
+      const errorMessages = data.errors.map((e: any) => e.message).join(", ");
+      return Response.json(
+        {
+          success: false,
+          error: errorMessages,
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // Check for user errors
     const userErrors = data?.data?.inventoryAdjustQuantities?.userErrors || [];
     if (userErrors.length > 0) {
+      const errorMessages = userErrors.map((e: any) => e.message).join(", ");
       return Response.json(
         {
           success: false,
+          error: errorMessages,
           errors: userErrors,
         },
         { status: 400, headers: corsHeaders }
@@ -127,12 +144,20 @@ export async function action({ request }: ActionFunctionArgs) {
       createdAt: adjustmentGroup?.createdAt,
       changes: adjustmentGroup?.changes?.edges?.map((e: any) => e.node) || [],
     }, { headers: corsHeaders });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Transfer error:", error);
+    // Extract GraphQL errors if available
+    let errorMessage = "Failed to transfer inventory";
+    if (error?.graphQLErrors) {
+      const gqlErrors = error.graphQLErrors.map((e: any) => e.message).join(", ");
+      errorMessage = gqlErrors || errorMessage;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
     return Response.json(
       {
         success: false,
-        error: "Failed to transfer inventory",
+        error: errorMessage,
       },
       { status: 500, headers: corsHeaders }
     );

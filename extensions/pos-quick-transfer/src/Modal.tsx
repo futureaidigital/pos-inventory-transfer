@@ -6,8 +6,6 @@ import {
   Navigator,
   TextField,
   Button,
-  Banner,
-  Stepper,
   reactExtension,
   useApi,
 } from '@shopify/ui-extensions-react/point-of-sale';
@@ -99,8 +97,7 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
 
           {error && (
             <>
-              <Text variant="headingSmall">Error:</Text>
-              <Text>{error}</Text>
+              <Text>Error: {error}</Text>
               <Button
                 title="Retry"
                 type="primary"
@@ -221,11 +218,14 @@ function ProductScreen({
     }
   };
 
+  const incrementQty = () => setQuantity(q => Math.min(q + 1, Math.max(originStock, 1)));
+  const decrementQty = () => setQuantity(q => Math.max(q - 1, 1));
+
   return (
     <Navigator>
       <Screen name="Product" title="Transfer Inventory">
         <ScrollView>
-          <Text variant="headingLarge">{product.title}</Text>
+          <Text>{product.title}</Text>
           {variant.title !== 'Default Title' && <Text>{variant.title}</Text>}
           {variant.sku && <Text>SKU: {variant.sku}</Text>}
 
@@ -233,25 +233,17 @@ function ProductScreen({
             <Text>Loading inventory...</Text>
           ) : (
             <>
-              <Text variant="headingSmall">Current Stock:</Text>
+              <Text>Current Stock:</Text>
               <Text>{CONFIG.ORIGIN_NAME}: {originStock} available</Text>
               <Text>{CONFIG.DESTINATION_NAME}: {destinationStock} available</Text>
             </>
           )}
 
-          <Text variant="headingSmall">Quantity to transfer:</Text>
-          <Stepper
-            value={quantity}
-            min={1}
-            max={Math.max(originStock, 1)}
-            onChange={setQuantity}
-          />
+          <Text>Quantity: {quantity}</Text>
+          <Button title="-" type="basic" onPress={decrementQty} />
+          <Button title="+" type="basic" onPress={incrementQty} />
 
-          {error && (
-            <Banner title="Error" variant="error" visible>
-              {error}
-            </Banner>
-          )}
+          {error && <Text>Error: {error}</Text>}
 
           <Button
             title={transferring ? 'Transferring...' : `Transfer ${quantity} to ${CONFIG.DESTINATION_NAME}`}
@@ -261,9 +253,7 @@ function ProductScreen({
           />
 
           {originStock < 1 && !loading && (
-            <Banner title="No Stock" variant="warning" visible>
-              {CONFIG.ORIGIN_NAME} has no inventory
-            </Banner>
+            <Text>No stock available at {CONFIG.ORIGIN_NAME}</Text>
           )}
 
           <Button title="Back" type="basic" onPress={onBack} />
@@ -299,11 +289,11 @@ function SuccessScreen({
     <Navigator>
       <Screen name="Success" title="Transfer Complete">
         <ScrollView>
-          <Text variant="headingLarge">✓ Success!</Text>
+          <Text>Success!</Text>
           <Text>Transferred {quantity}x {product.title}</Text>
           {variant.title !== 'Default Title' && <Text>{variant.title}</Text>}
 
-          <Text variant="headingSmall">Updated Stock:</Text>
+          <Text>Updated Stock:</Text>
           <Text>{CONFIG.ORIGIN_NAME}: {newOriginStock} left</Text>
           <Text>{CONFIG.DESTINATION_NAME}: {newDestinationStock} now</Text>
 
