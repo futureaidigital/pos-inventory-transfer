@@ -24,7 +24,7 @@ export function buildTransferInput(
   quantity: number
 ) {
   return {
-    reason: "movement",
+    reason: "correction",
     name: "available",
     changes: [
       {
