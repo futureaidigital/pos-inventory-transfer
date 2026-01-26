@@ -49,9 +49,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Check for Authorization header (from POS extension)
   const authHeader = request.headers.get("Authorization");
 
+  // Debug logging
+  console.log("=== API Search Debug ===");
+  console.log("Shop param:", shopParam);
+  console.log("Auth header present:", !!authHeader);
+  console.log("Auth header value:", authHeader ? `${authHeader.substring(0, 20)}...` : "null");
+  console.log("All headers:", Object.fromEntries(request.headers.entries()));
+
   let admin;
 
   if (authHeader && authHeader.startsWith("Bearer ") && shopParam) {
+    console.log("Using POS extension auth path");
     // POS extension request - use unauthenticated admin with stored session
     try {
       const unauthAdmin = await unauthenticated.admin(shopParam);
@@ -65,6 +73,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   } else {
     // Standard admin request
+    console.log("Using standard admin auth path (no Bearer token or shop param)");
     const result = await authenticate.admin(request);
     admin = result.admin;
   }

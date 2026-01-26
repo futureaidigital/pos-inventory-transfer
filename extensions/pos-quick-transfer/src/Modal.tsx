@@ -39,9 +39,11 @@ function SearchScreen({ onSelectProduct }: { onSelectProduct: (product: Product)
     try {
       // Get session token for authenticated requests
       const sessionToken = await api.session.getSessionToken();
+      console.log('Session token obtained:', sessionToken ? `${sessionToken.substring(0, 20)}...` : 'NULL/EMPTY');
 
       const url = `${CONFIG.APP_URL}/api/search?q=${encodeURIComponent(searchQuery)}&shop=${encodeURIComponent(CONFIG.SHOP_DOMAIN)}`;
       console.log('Fetching:', url);
+      console.log('Headers being sent:', { Authorization: sessionToken ? 'Bearer [token]' : 'Bearer NULL' });
 
       const response = await fetch(url, {
         headers: {

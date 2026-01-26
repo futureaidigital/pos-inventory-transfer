@@ -17,7 +17,8 @@ const shopify = shopifyApp({
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
   future: {
-    expiringOfflineAccessTokens: true,
+    // Disabled to keep POS extension working without requiring admin to refresh session
+    // expiringOfflineAccessTokens: true,
   },
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
